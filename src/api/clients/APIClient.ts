@@ -1,5 +1,6 @@
 import { APIResponse, expect } from "@playwright/test";
 import { APIRequestContext } from "@playwright/test";
+import { faker } from "@faker-js/faker";
 
 interface LoginParams {
   request: APIRequestContext;
@@ -41,15 +42,57 @@ export class APIClient {
     });
   }
 
-  async postRequest({ request }, endpoint: string, token: string, body: object): Promise<APIResponse> {
-    const url = process.env.BASE_URL! + endpoint;
+  async postRequest({ request }: { request: APIRequestContext }, endpoint: string, token: string, data: object): Promise<APIResponse> {
+        const url = process.env.BASE_URL! + endpoint;
+        const response = await request.post(url, {
+            headers: {
+                Accept: 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            data,
+        });
+        return response;
+    }
 
-    return await request.post(url, {
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      data: body,
-    });
-  }
+     async putRequest({ request }, endpoint: string, token: string, data: object): Promise<APIResponse> {
+        const url = process.env.BASE_URL! + endpoint;
+        const response = await request.put(url, {
+            headers: {
+                Accept: 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            data,
+        });
+        return response;
+    }
+
+
+    async getRandomPatientID({ request }, token: string): Promise<string> {
+        const response = await this.getRequest({ request }, "/api-patients", token);
+        const responseBody = await response.json();
+        const patients = responseBody.data;
+        const randomPatient = patients[Math.floor(Math.random() * patients.length)];
+        console.log('RANDOM PATIENT: ' + randomPatient.patient_id);
+        return randomPatient.patient_id;
+    }
+
+
+    
+}
+
+// create random patient
+export function createPatientBody() {
+  return {
+    "first_name": faker.person.firstName(),
+    "last_name": faker.person.lastName(),
+    "dob": faker.date.birthdate({ min: 18, max: 110, mode: 'age' }).toISOString().split('T')[0],
+    "gender": faker.helpers.arrayElement(['Male', 'Female']),
+    "phone": faker.phone.number(),
+    "email": faker.internet.email(),
+    "address": faker.location.streetAddress(),
+    "emergency_contact_name": faker.person.fullName(),
+    "emergency_contact_phone": faker.phone.number(),
+    "insurance_provider": faker.company.name(),
+    "insurance_policy_number": faker.string.alphanumeric(10).toUpperCase()
+  };
 }

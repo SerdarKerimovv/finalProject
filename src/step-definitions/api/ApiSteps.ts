@@ -1,16 +1,15 @@
-import { Given, When, Then, Before } from '@cucumber/cucumber'
-import { APIClient } from '../../api/clients/APIClient';
-import { request, expect } from '@playwright/test';
+import { Given, When, Then, Before } from "@cucumber/cucumber";
+import { APIClient, createPatientBody } from "../../api/clients/APIClient";
+import { request, expect } from "@playwright/test";
+import { faker } from "@faker-js/faker";
 
 const apiClient = new APIClient();
 
 Before(async function () {
-    this.request = await request.newContext();
+  this.request = await request.newContext();
 });
 
-
 Given("doctor is logged in", async function () {
-  
   this.token = await apiClient.login({
     request: this.request,
     email: process.env.USER_EMAIL,
@@ -18,20 +17,67 @@ Given("doctor is logged in", async function () {
   });
 });
 
-When('user hits GET {string}', async function (endpoint) {
-        this.response = await apiClient.getRequest({request : this.request}, endpoint, this.token);
-        console.log(await this.response.json());
+When("user hits GET {string}", async function (endpoint) {
+  this.response = await apiClient.getRequest(
+    { request: this.request },
+    endpoint,
+    this.token,
+  );
+  console.log(await this.response.json());
 });
 
 Then("verify status code is {int}", function (expectedStatusCode) {
-    expect(this.response.status()).toBe(expectedStatusCode);
+  expect(this.response.status()).toBe(expectedStatusCode);
 });
 
-When('user hits POST {string} with body', async function (endpoint, body) {
-    const parsed = JSON.parse(body);
-    if (parsed.email) {
-        parsed.email = `test_${Date.now()}@test.com`;
-    }
-    this.response = await apiClient.postRequest({ request: this.request }, endpoint, this.token, parsed);
-    console.log(await this.response.json());
+When("user hits POST {string} with body", async function (endpoint, docString) {
+  this.response = await apiClient.postRequest(
+    { request: this.request },
+    endpoint,
+    this.token,
+    JSON.parse(docString),
+  );
 });
+
+When(
+  "user creates random patient using POST {string}",
+  async function (endpoint) {
+    const patientBody = createPatientBody();
+    console.log(patientBody);
+    this.response = await apiClient.postRequest(
+      { request: this.request },
+      endpoint,
+      this.token,
+      patientBody,
+    );
+  },
+);
+
+When(
+  "user provides {string} with new value {string}",
+  async function (key, value) {
+    this.requestBody = { ...this.requestBody, [key]: value };
+  },
+);
+
+When("user hits PUT {string}", async function (endpoint) {
+  endpoint =
+    endpoint +
+    "/" +
+    (await apiClient.getRandomPatientID({ request: this.request }, this.token));
+
+  this.response = await apiClient.putRequest(
+    { request: this.request },
+    endpoint,
+    this.token,
+    this.requestBody,
+  );
+  expect(this.response.status()).toBe(200);
+});
+Then(
+  "verify response body contains {string} with {string}",
+  async function (key, value) {
+    const body = await this.response.json();
+    expect(body[key]).toContain(value);
+  },
+);

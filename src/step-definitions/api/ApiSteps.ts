@@ -1,13 +1,12 @@
-import { Given, When, Then, Before } from "@cucumber/cucumber";
-import { APIClient, createPatientBody } from "../../api/clients/APIClient";
-import { request, expect } from "@playwright/test";
-import { faker } from "@faker-js/faker";
+import { Given, When, Then } from "@cucumber/cucumber";
+import {
+  APIClient,
+  createAppointmentBody,
+  createPatientBody,
+} from "../../api/clients/APIClient";
+import { expect } from "@playwright/test";
 
 const apiClient = new APIClient();
-
-Before(async function () {
-  this.request = await request.newContext();
-});
 
 Given("doctor is logged in", async function () {
   this.token = await apiClient.login({
@@ -30,14 +29,17 @@ Then("verify status code is {int}", function (expectedStatusCode) {
   expect(this.response.status()).toBe(expectedStatusCode);
 });
 
-When("user hits POST {string} with body", async function (endpoint, docString) {
-  this.response = await apiClient.postRequest(
-    { request: this.request },
-    endpoint,
-    this.token,
-    JSON.parse(docString),
-  );
-});
+When(
+  "user hits POST {string} with body",
+  async function (endpoint, requestBody) {
+    this.response = await apiClient.postRequest(
+      { request: this.request },
+      endpoint,
+      this.token,
+      JSON.parse(requestBody),
+    );
+  },
+);
 
 When(
   "user creates random patient using POST {string}",
@@ -50,6 +52,7 @@ When(
       this.token,
       patientBody,
     );
+    expect(this.response.status()).toBe(201);
   },
 );
 
@@ -74,6 +77,7 @@ When("user hits PUT {string}", async function (endpoint) {
   );
   expect(this.response.status()).toBe(200);
 });
+
 Then(
   "verify response body contains {string} with {string}",
   async function (key, value) {
@@ -81,3 +85,21 @@ Then(
     expect(body[key]).toContain(value);
   },
 );
+
+When("user hits POST {string} with body", async function (endpoint) {
+  let requestBody;
+  if (endpoint === "/api-patients") {
+    requestBody = createPatientBody();
+  } else if (endpoint === "/api-appointments") {
+    requestBody = await createAppointmentBody(this.request, this.token);
+  } else {
+    throw new Error(`Unsupported endpoint: ${endpoint}`);
+  }
+  console.log(requestBody);
+  this.response = await apiClient.postRequest(
+    { request: this.request },
+    endpoint,
+    this.token,
+    requestBody,
+  );
+});

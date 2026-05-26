@@ -8,6 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
+    baseURL: 'https://codewise-clinic-portal.lovable.app',
     trace: 'on-first-retry',
   },
 
